@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valentine Proposal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    
+    .font-romantic { font-family: Arial, sans-serif; }
+    .font-main { font-family: Arial, sans-serif; }
+    
+    /* Envelope Animation */
+    .envelope-container {
+      perspective: 1200px;
+      position: relative;
+    }
+    
+    .envelope {
+      width: 340px;
+      height: 240px;
+      position: relative; /* ✅ IMPORTANT: makes letter position relative to envelope */
+      transform-style: preserve-3d;
+      cursor: pointer;
+      transition: transform 0.4s ease;
+      overflow: visible;
+    }
+    
+    .envelope:hover:not(.opened) {
+      transform: translateY(-8px);
+    }
+    
+    .envelope-back {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+      border-radius: 6px;
+      box-shadow: 0 20px 60px rgba(74, 144, 226, 0.4);
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    .envelope-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+      border-radius: 0 0 6px 6px;
+      z-index: 1;
+    }
+    
+    .envelope-flap {
+      position: absolute;
+      width: 100%;
+      height: 50%;
+      top: 0;
+      left: 0;
+      background: linear-gradient(180deg, #64a8f0 0%, #4a90e2 100%);
+      clip-path: polygon(0 0, 50% 100%, 100% 0);
+      transform-origin: top center;
+      transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index: 3;
+      backface-visibility: hidden;
+      pointer-events: none;
+    }
+    
+    .envelope.opened .envelope-flap {
+      transform: rotateX(-180deg);
+    }
+    
+    .envelope-inner-flap {
+      position: absolute;
+      width: 100%;
+      height: 50%;
+      top: 0;
+      left: 0;
+      background: linear-gradient(180deg, #fff 0%, #ffe8f0 100%);
+      clip-path: polygon(0 0, 50% 100%, 100% 0);
+      z-index: 2;
+      pointer-events: none;
+    }
+    
+    .heart-seal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 15;
+      transition: all 0.5s ease;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
+    
+    .envelope.opened .heart-seal {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0);
+    }
+    
+    /* Letter Animation */
+    .letter {
+      position: absolute;
+      width: 280px;
+      left: 50%;
+      transform: translateX(-50%) scaleY(0.05);  /* folded up TINY */
+      transform-origin: bottom center;
+      bottom: 40px;              /* starts hidden inside envelope */
+      background: #fff;
+      border-radius: 6px;
+      padding: 32px 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 0;                /* behind envelope initially */
+      transition: all 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      pointer-events: auto;
+      opacity: 0.8;
+    }
+    
+    .envelope.opened .letter {
+      transform: translateX(-50%) scaleY(1);  /* unfolds to full height */
+      bottom: 180px;             /* pops out nicely */
+      z-index: 20;               /* comes to front when opened */
+      opacity: 1;
+    }
+    
+    .letter-buttons {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.6s ease 0.4s;
+    }
+    
+    .envelope.opened .letter-buttons {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Floating hearts background */
+    .floating-hearts {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    
+    .floating-heart {
+      position: absolute;
+      font-size: 2rem;
+      opacity: 0.2;
+    }
+    
+    /* Button styles */
+    .btn-yes {
+      background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+      box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+      transition: all 0.3s ease;
+    }
+    
+    .btn-yes:hover {
+      transform: scale(1.08);
+      box-shadow: 0 8px 30px rgba(74, 144, 226, 0.6);
+    }
+    
+    .btn-no {
+      background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+      transition: all 0.3s ease;
+    }
+    
+    .btn-no:hover {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+    
+    /* Confetti */
+    .confetti-piece {
+      position: fixed;
+      width: 12px;
+      height: 12px;
+      top: -20px;
+      z-index: 1000;
+      animation: confetti-fall linear forwards;
+    }
+    
+    @keyframes confetti-fall {
+      to {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+    
+    /* Burn effect */
+    .letter.burning {
+      animation: burn 2.5s ease-out forwards;
+    }
+    
+    @keyframes burn {
+      0% {
+        filter: brightness(1) contrast(1) saturate(1);
+        transform: translateX(-50%) scale(1);
+      }
+      20% {
+        filter: brightness(1.3) contrast(1.2) saturate(1.5) hue-rotate(-10deg);
+      }
+      50% {
+        filter: brightness(0.8) contrast(1.5) saturate(2) hue-rotate(-20deg);
+        transform: translateX(-50%) scale(0.95);
+      }
+      80% {
+        filter: brightness(0.3) contrast(2) saturate(1);
+        transform: translateX(-50%) scale(0.7);
+      }
+      100% {
+        filter: brightness(0) contrast(2);
+        transform: translateX(-50%) scale(0);
+        opacity: 0;
+      }
+    }
+    
+    /* Screen transitions */
+    .screen {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .screen.active {
+      display: flex;
+      opacity: 1;
+    }
+    
+    /* Success animation */
+    .success-heart {
+      /* Static emoji - no animation */
+    }
+    
+    /* Crying animation */
+    .crying-emoji {
+      /* Static emoji - no animation */
+    }
+    
+    /* Click hint */
+    .click-hint {
+      opacity: 0.8;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full font-main">
+  <div id="app" class="h-full w-full overflow-auto"><!-- Screen 1: Envelope Screen -->
+   <div id="envelope-screen" class="screen active flex-col items-center justify-center min-h-full p-8 relative"><!-- Background -->
+    <div class="absolute inset-0 w-full h-full" style="background: linear-gradient(135deg, #e8f4fd 0%, #d4e9fc 50%, #c0dffb 100%);"></div><!-- Floating hearts -->
+    <div class="floating-hearts">
+     <div class="floating-heart" style="left: 10%; top: 15%; animation-delay: 0s;">
+      💕
+     </div>
+     <div class="floating-heart" style="left: 85%; top: 20%; animation-delay: 0.5s;">
+      ��
+     </div>
+     <div class="floating-heart" style="left: 15%; top: 75%; animation-delay: 1s;">
+      💗
+     </div>
+     <div class="floating-heart" style="left: 80%; top: 65%; animation-delay: 1.5s;">
+      💕
+     </div>
+     <div class="floating-heart" style="left: 50%; top: 90%; animation-delay: 2s;">
+      💘
+     </div>
+    </div>
+    <div class="relative z-10 flex flex-col items-center">
+     <h1 class="font-romantic text-5xl md:text-6xl mb-3 text-center" style="color: #357abd;">A LETTER FOR MY BABY</h1>
+     <p class="text-lg mb-8 click-hint" style="color: #4a90e2;">open it hehe</p>
+     <div class="envelope-container">
+      <div id="envelope" class="envelope"><!-- Envelope body -->
+       <div class="envelope-back"><!-- Inner white flap -->
+        <div class="envelope-inner-flap"></div>
+       </div><!-- Letter -->
+       <div id="letter" class="letter">
+        <p class="font-romantic text-3xl mb-4 text-center" style="color: #357abd;" id="letter-greeting">Oh Baby Christine,</p>
+        <p class="text-center leading-relaxed mb-6 text-lg" style="color: #2c3e50;" id="letter-question">Will you be my Valentine? hehe</p>
+        <p class="font-romantic text-2xl text-right mb-6" style="color: #4a90e2;" id="letter-signature">plsplsplspls</p><!-- Yes/No buttons -->
+        <div class="letter-buttons flex gap-4 justify-center"><button id="btn-yes" class="btn-yes text-white font-bold py-3 px-10 rounded-full text-lg"> Yes! 💖 </button> <button id="btn-no" class="btn-no text-white font-semibold py-3 px-8 rounded-full text-lg"> No 💔 </button>
+        </div>
+       </div><!-- Envelope flap (opens upward) -->
+       <div class="envelope-flap"></div><!-- Heart seal -->
+       <div class="heart-seal">
+        <svg width="60" height="60" viewbox="0 0 24 24" fill="#fff"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div><!-- Screen 2: Yes Response -->
+   <div id="yes-screen" class="screen flex-col items-center justify-center min-h-full p-8 relative">
+    <div class="absolute inset-0 w-full h-full" style="background: linear-gradient(135deg, #4a90e2 0%, #78b3f0 50%, #9fc9f5 100%);"></div>
+    <div class="relative z-10 text-center">
+     <div class="text-9xl mb-6">
+      💙
+     </div>
+     <h1 class="font-romantic text-6xl md:text-7xl text-white mb-4" style="text-shadow: 0 4px 12px rgba(0,0,0,0.2);"> YAYYYYYYAYAYAYA</h1>
+     <p class="text-3xl text-white mb-3" style="text-shadow: 0 2px 8px rgba(0,0,0,0.2);">I'M SOOO LUCKYYYYY</p>
+     <p class="text-2xl mb-8" style="color: #e8f4fd;">See you on February 13th and 14th 🌹</p>
+     <div class="text-7xl">
+      🥰
+     </div>
+    </div>
+   </div><!-- Screen 3: No Response -->
+   <div id="no-screen" class="screen flex-col items-center justify-center min-h-full p-8 relative">
+    <div class="absolute inset-0 w-full h-full" style="background: linear-gradient(135deg, #d4d8dc 0%, #b0b6bc 50%, #8b9197 100%);"></div>
+    <div class="relative z-10 text-center">
+     <div class="crying-emoji text-9xl mb-6">
+      😢😢😢😢😢😢
+     </div>
+     <h1 class="font-romantic text-5xl md:text-6xl text-gray-700 mb-4">My Heart is now Broken...</h1>
+     <p class="text-2xl text-gray-600 mb-8">You've shattered my dreams.. 😢😢</p><!-- Crying GIF simulation with animated emoji -->
+     <div class="mb-10 text-8xl crying-emoji">
+      😢
+     </div><button id="btn-try-again" class="font-semibold py-4 px-10 rounded-full text-xl text-white shadow-lg transition-all hover:scale-105" style="background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);"> pagbigyan mo ako o iiyak ako? 💔 </button>
+    </div>
+   </div>
+  </div>
+  <script>
+    const defaultConfig = {
+      recipient_name: "Oh Baby Christine",
+      letter_message: "Will you be my Valentine? hehe",
+      sender_name: "plsplsplspls",
+      primary_color: "#4a90e2",
+      secondary_color: "#e8f4fd",
+      text_color: "#2c3e50"
+    };
+
+    let envelopeOpened = false;
+
+    // Initialize Element SDK
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange: async (config) => {
+          const greeting = document.getElementById('letter-greeting');
+          const question = document.getElementById('letter-question');
+          const signature = document.getElementById('letter-signature');
+          
+          if (greeting) {
+            greeting.textContent = `Dear ${config.recipient_name || defaultConfig.recipient_name},`;
+          }
+          if (question) {
+            question.textContent = config.letter_message || defaultConfig.letter_message;
+          }
+          if (signature) {
+            signature.textContent = config.sender_name || defaultConfig.sender_name;
+          }
+          
+          // Apply colors
+          const primaryColor = config.primary_color || defaultConfig.primary_color;
+          const secondaryColor = config.secondary_color || defaultConfig.secondary_color;
+          const textColor = config.text_color || defaultConfig.text_color;
+          
+          document.querySelectorAll('.envelope-back').forEach(el => {
+            el.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -20)} 100%)`;
+          });
+          
+          document.querySelectorAll('.envelope-flap').forEach(el => {
+            el.style.background = `linear-gradient(180deg, ${adjustBrightness(primaryColor, 10)} 0%, ${primaryColor} 100%)`;
+          });
+          
+          document.querySelectorAll('.btn-yes').forEach(el => {
+            el.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -20)} 100%)`;
+          });
+          
+          if (greeting) greeting.style.color = adjustBrightness(primaryColor, -20);
+          if (signature) signature.style.color = primaryColor;
+          if (question) question.style.color = textColor;
+        },
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.primary_color || defaultConfig.primary_color,
+              set: (value) => {
+                config.primary_color = value;
+                window.elementSdk.setConfig({ primary_color: value });
+              }
+            },
+            {
+              get: () => config.secondary_color || defaultConfig.secondary_color,
+              set: (value) => {
+                config.secondary_color = value;
+                window.elementSdk.setConfig({ secondary_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: undefined,
+          fontSizeable: undefined
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ["recipient_name", config.recipient_name || defaultConfig.recipient_name],
+          ["letter_message", config.letter_message || defaultConfig.letter_message],
+          ["sender_name", config.sender_name || defaultConfig.sender_name]
+        ])
+      });
+    }
+
+    // Helper function to adjust brightness
+    function adjustBrightness(hex, percent) {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const r = Math.max(0, Math.min(255, ((num >> 16) & 0xff) + percent));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0xff) + percent));
+      const b = Math.max(0, Math.min(255, (num & 0xff) + percent));
+      return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+    }
+
+    // Open envelope
+    document.getElementById('envelope').addEventListener('click', function() {
+      if (!envelopeOpened) {
+        envelopeOpened = true;
+        this.classList.add('opened');
+        this.style.cursor = 'default';
+      }
+    });
+
+    // Yes button
+    document.getElementById('btn-yes').addEventListener('click', function(e) {
+      e.stopPropagation();
+      createConfetti();
+      setTimeout(() => {
+        showScreen('yes-screen');
+      }, 600);
+    });
+
+    // No button
+    document.getElementById('btn-no').addEventListener('click', function(e) {
+      e.stopPropagation();
+      const letter = document.getElementById('letter');
+      letter.classList.add('burning');
+      
+      setTimeout(() => {
+        showScreen('no-screen');
+      }, 2500);
+    });
+
+    // Try again button
+    document.getElementById('btn-try-again').addEventListener('click', function() {
+      resetEnvelope();
+      showScreen('envelope-screen');
+    });
+
+    function createConfetti() {
+      const colors = ['#4a90e2', '#64a8f0', '#78b3f0', '#9fc9f5', '#357abd', '#2e7cc4'];
+      const emojis = ['💙', '💎', '⭐', '✨', '🌟', '💠', '🔷'];
+      
+      for (let i = 0; i < 80; i++) {
+        setTimeout(() => {
+          const confetti = document.createElement('div');
+          confetti.className = 'confetti-piece';
+          confetti.style.left = Math.random() * 100 + '%';
+          confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+          confetti.style.animationDelay = Math.random() * 0.3 + 's';
+          
+          if (Math.random() > 0.6) {
+            confetti.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            confetti.style.fontSize = (Math.random() * 20 + 20) + 'px';
+            confetti.style.width = 'auto';
+            confetti.style.height = 'auto';
+          } else {
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+            confetti.style.width = (Math.random() * 8 + 6) + 'px';
+            confetti.style.height = (Math.random() * 12 + 8) + 'px';
+          }
+          
+          document.body.appendChild(confetti);
+          
+          setTimeout(() => confetti.remove(), 4000);
+        }, i * 25);
+      }
+    }
+
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    function resetEnvelope() {
+      envelopeOpened = false;
+      const envelope = document.getElementById('envelope');
+      const letter = document.getElementById('letter');
+      
+      envelope.classList.remove('opened');
+      envelope.style.cursor = 'pointer';
+      letter.classList.remove('burning');
+    }
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c60c218020e4eeb',t:'MTc2OTc3Mzg5NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
